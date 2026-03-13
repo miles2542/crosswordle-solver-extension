@@ -1,13 +1,14 @@
 {
   "name": "tactile-crosswordle-solver",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "type": "module",
   "description": "",
   "main": "index.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "check": "svelte-check"
+    "check": "svelte-check",
+    "test": "vitest run"
   },
   "keywords": [],
   "author": "",
@@ -22,6 +23,7 @@
     "svelte": "^5.53.10",
     "svelte-check": "^4.4.5",
     "typescript": "^5.9.3",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vitest": "^4.1.0"
   }
 }

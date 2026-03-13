@@ -11,11 +11,6 @@ export interface SwapAction {
     resolvesB: boolean;
 }
 
-/**
- * Core Algorithm: Calculates the optimal sequence of swaps to solve a target set of cells.
- * * @param targetIds The IDs of the cells we WANT to solve (e.g., a specific row, or full board)
- * @returns Array of sequential SwapActions.
- */
 export function calculateOptimalSwaps(targetIds: string[]): SwapAction[] {
     const state = get(boardStore);
     if (state.isSolved || state.cells.size === 0) return [];
@@ -103,6 +98,137 @@ export function calculateOptimalSwaps(targetIds: string[]): SwapAction[] {
     return sequence;
 }
 
+/**
+ * Deep Solver: Partition edges into maximum possible number of disjoint cycles.
+ * Minimum Swaps = Total Incorrect Cells - Maximum Disjoint Cycles
+ */
+export function calculateFullBoardOptimalSwaps(targetIds: string[]): SwapAction[] {
+    const state = get(boardStore);
+    if (state.isSolved || state.cells.size === 0) return [];
+
+    const availablePool = new Map<string, { current: string, target: string }>();
+    for (const cell of get(incorrectCellsStore)) {
+        availablePool.set(cell.id, { current: cell.currentVal, target: cell.targetVal });
+    }
+
+    const remainingTargets = targetIds.filter(id => availablePool.has(id));
+    if (remainingTargets.length === 0) return [];
+
+    // Group edges by their transition: "FROM_LETTER -> TO_LETTER"
+    // transitions["A"]["B"] = ["cell_id_1", "cell_id_2"]
+    const transitions: Record<string, Record<string, string[]>> = {};
+    for (const id of remainingTargets) {
+        const node = availablePool.get(id)!;
+        if (!transitions[node.current]) transitions[node.current] = {};
+        if (!transitions[node.current][node.target]) transitions[node.current][node.target] = [];
+        transitions[node.current][node.target].push(id);
+    }
+
+    let bestCycles: string[][] = [];
+
+    /**
+     * Recursive search for maximum cycle packing.
+     */
+    function findBestDecomposition(currentTransitions: typeof transitions, currentCycles: string[][]) {
+        // Find first available transition
+        let fromStr: string | null = null;
+        for (const f in currentTransitions) {
+            for (const t in currentTransitions[f]) {
+                if (currentTransitions[f][t].length > 0) {
+                    fromStr = f;
+                    break;
+                }
+            }
+            if (fromStr) break;
+        }
+
+        if (!fromStr) {
+            if (currentCycles.length > bestCycles.length) {
+                bestCycles = JSON.parse(JSON.stringify(currentCycles));
+            }
+            return;
+        }
+
+        // Branching: Every cycle starting with an edge from 'fromStr'
+        // To keep it efficient, we only explore simple cycles starting from this specific edge.
+        const workFrom = fromStr;
+        const targetLetter = Object.keys(currentTransitions[workFrom]).find(t => currentTransitions[workFrom][t].length > 0)!;
+        const edgeId = currentTransitions[workFrom][targetLetter].pop()!;
+
+        const findCyclesFrom = (curr: string, path: string[], ids: string[]) => {
+            if (curr === workFrom) {
+                // Found a cycle! Recurse on remaining graph.
+                findBestDecomposition(currentTransitions, [...currentCycles, [...ids]]);
+                return;
+            }
+
+            if (path.includes(curr)) return; // Simple cycles only for branching
+
+            const nextTargets = currentTransitions[curr] || {};
+            for (const nextT in nextTargets) {
+                if (nextTargets[nextT].length > 0) {
+                    const nextId = nextTargets[nextT].pop()!;
+                    findCyclesFrom(nextT, [...path, curr], [...ids, nextId]);
+                    nextTargets[nextT].push(nextId); // Backtrack
+                }
+            }
+        };
+
+        findCyclesFrom(targetLetter, [], [edgeId]);
+        currentTransitions[workFrom][targetLetter].push(edgeId); // Backtrack
+    }
+
+    // Optimization: Pre-extract all 2-cycles as they are always optimal to take
+    const staticCycles: string[][] = [];
+    const letters = Object.keys(transitions);
+    for (let i = 0; i < letters.length; i++) {
+        for (let j = i + 1; j < letters.length; j++) {
+            const l1 = letters[i];
+            const l2 = letters[j];
+            while (transitions[l1]?.[l2]?.length > 0 && transitions[l2]?.[l1]?.length > 0) {
+                staticCycles.push([transitions[l1][l2].pop()!, transitions[l2][l1].pop()!]);
+            }
+        }
+    }
+
+    findBestDecomposition(transitions, staticCycles);
+
+    // 3. Convert cycles into SwapAction sequence
+    const sequence: SwapAction[] = [];
+    let stepCount = 1;
+
+    for (const cycleIds of bestCycles) {
+        // A cycle of N nodes [A, B, C] where A has B's letter, B has C's, C has A's
+        // Resolving this takes N-1 swaps.
+        // Swap(A, B): A resolved, B has A's letter (needs C's).
+        // Swap(B, C): B resolved, C resolved.
+        for (let i = 0; i < cycleIds.length - 1; i++) {
+            const idA = cycleIds[i];
+            const idB = cycleIds[i + 1];
+            
+            const nodeA = availablePool.get(idA)!;
+            const nodeB = availablePool.get(idB)!;
+
+            sequence.push({
+                step: stepCount++,
+                cellA_Id: idA,
+                cellB_Id: idB,
+                letterA: nodeA.current,
+                letterB: nodeB.current,
+                resolvesA: nodeB.current === nodeA.target,
+                resolvesB: nodeA.current === nodeB.target
+            });
+
+            // Update simulation pool
+            const temp = nodeA.current;
+            nodeA.current = nodeB.current;
+            nodeB.current = temp;
+        }
+    }
+
+    return sequence;
+}
+
 // --- Mode Wrappers for the UI ---
 
 export function getSequenceForCell(cellId: string): SwapAction[] {
@@ -128,5 +254,5 @@ export function getSequenceForCol(colIndex: number): SwapAction[] {
 export function getSequenceForFullBoard(): SwapAction[] {
     const state = get(boardStore);
     const allIds = Array.from(state.cells.keys());
-    return calculateOptimalSwaps(allIds);
+    return calculateFullBoardOptimalSwaps(allIds);
 }
