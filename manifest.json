@@ -7,13 +7,10 @@
   "content_scripts": [
     {
       "js": [
-        "assets/content.ts-DiE7ITeh.js"
+        "src/content.ts"
       ],
       "matches": [
         "*://*.crosswordle.com/*"
-      ],
-      "css": [
-        "assets/content-D6KrUwiA.css"
       ]
     }
   ],
@@ -27,10 +24,8 @@
       ],
       "resources": [
         "assets/*.css",
-        "assets/*.js",
-        "assets/content.ts-DiE7ITeh.js"
-      ],
-      "use_dynamic_url": false
+        "assets/*.js"
+      ]
     }
   ]
 }
