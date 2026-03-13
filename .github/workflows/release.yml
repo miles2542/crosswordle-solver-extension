@@ -40,8 +40,9 @@ jobs:
 
       - name: Build Chrome (from main)
         run: |
-          git checkout origin/main
+          git checkout --force origin/main
           pnpm install
+          rm -rf dist
           pnpm run build
           
           # Package Dist-only
@@ -59,8 +60,9 @@ jobs:
 
       - name: Build Firefox (from firefox)
         run: |
-          git checkout origin/firefox
+          git checkout --force origin/firefox
           pnpm install
+          rm -rf dist
           pnpm run build
           
           # Package Firefox
