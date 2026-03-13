@@ -2,10 +2,7 @@
     import { onMount, onDestroy } from "svelte";
     import { spring } from "svelte/motion";
     import { scale } from "svelte/transition";
-    import {
-        boardStore,
-        incorrectCellsStore
-    } from "../core/boardState";
+    import { boardStore, incorrectCellsStore } from "../core/boardState";
     import {
         getSequenceForCell,
         getSequenceForRow,
@@ -53,7 +50,10 @@
         phase = "revealing";
         mode = detail.mode; // Fix: Crucial for Full Board mode overlays
         if (detail.mode === "rowcol") {
-            targetSelection = { index: detail.target, axis: detail.axis || "row" };
+            targetSelection = {
+                index: detail.target,
+                axis: detail.axis || "row",
+            };
         } else {
             targetSelection = detail.target;
         }
@@ -115,7 +115,7 @@
 
     // --- Reactive Auto-Advance Logic (Svelte 5 Effect) ---
     let prevIncorrectHash = "";
-    
+
     // Using $effect properly breaks the dependency cycle between currentSwapIndex and the reactive block
     $effect(() => {
         if ($boardStore && phase === "revealing") {
@@ -129,24 +129,31 @@
                 const cellB = currentCells.get(currentActive.cellB_Id);
 
                 const currentIncorrect = $incorrectCellsStore;
-                const newHash = currentIncorrect.map(c => `${c.id}:${c.currentVal}`).join('|');
+                const newHash = currentIncorrect
+                    .map((c) => `${c.id}:${c.currentVal}`)
+                    .join("|");
 
                 // Check if expected swap happened
-                if (cellA?.currentVal === currentActive.letterB && cellB?.currentVal === currentActive.letterA) {
+                if (
+                    cellA?.currentVal === currentActive.letterB &&
+                    cellB?.currentVal === currentActive.letterA
+                ) {
                     currentSwapIndex = index + 1;
                     prevIncorrectHash = newHash; // Suppress "Hey!" for the correct swap
-                    
+
                     if (currentSwapIndex >= sequence.length) {
                         // Sequence complete - unify auto-exit
                         setTimeout(() => {
-                            window.dispatchEvent(new CustomEvent("cw-clear-overlays"));
-                        }, 800); 
+                            window.dispatchEvent(
+                                new CustomEvent("cw-clear-overlays"),
+                            );
+                        }, 800);
                     }
                 } else if (prevIncorrectHash && newHash !== prevIncorrectHash) {
                     // Strict: Any change that isn't the expected swap triggers "Hey!"
                     const lA = cellA?.currentVal || "";
                     const lB = cellB?.currentVal || "";
-                    
+
                     if (lA !== "" && lB !== "") {
                         phase = "error";
                         errorMessage = "Hey!";
@@ -159,32 +166,41 @@
         }
     });
 
-    let visibleCells = $derived($incorrectCellsStore.filter(cell => {
-        if (mode === "full") return true;
-        if (mode === "cell") return cell.id === targetSelection;
-        if (mode === "rowcol") {
-            const index = typeof targetSelection === 'object' ? targetSelection.index : targetSelection;
-            const axis = typeof targetSelection === 'object' ? targetSelection.axis : "row";
-            
-            if (typeof index === 'number') {
-                return axis === "row" ? cell.r === index : cell.c === index;
+    let visibleCells = $derived(
+        $incorrectCellsStore.filter((cell) => {
+            if (mode === "full") return true;
+            if (mode === "cell") return cell.id === targetSelection;
+            if (mode === "rowcol") {
+                const index =
+                    typeof targetSelection === "object"
+                        ? targetSelection.index
+                        : targetSelection;
+                const axis =
+                    typeof targetSelection === "object"
+                        ? targetSelection.axis
+                        : "row";
+
+                if (typeof index === "number") {
+                    return axis === "row" ? cell.r === index : cell.c === index;
+                }
             }
-        }
-        return false;
-    }));
+            return false;
+        }),
+    );
 
     // Fix for targetSelection type in rowcol event
     onMount(() => {
         const selectionHandler = (e: Event) => {
             const detail = (e as CustomEvent).detail;
             if (mode === "rowcol") {
-                 targetSelection = { index: detail.target, axis: detail.axis };
+                targetSelection = { index: detail.target, axis: detail.axis };
             } else {
-                 targetSelection = detail.target;
+                targetSelection = detail.target;
             }
         };
         window.addEventListener("cw-selection-made", selectionHandler);
-        return () => window.removeEventListener("cw-selection-made", selectionHandler);
+        return () =>
+            window.removeEventListener("cw-selection-made", selectionHandler);
     });
 </script>
 
@@ -207,7 +223,11 @@
                     refY="3.5"
                     orient="auto"
                 >
-                    <polygon points="0 0, 10 3.5, 0 7" fill="var(--accent-cyan)" fill-opacity="0.6" />
+                    <polygon
+                        points="0 0, 10 3.5, 0 7"
+                        fill="var(--accent-cyan)"
+                        fill-opacity="0.6"
+                    />
                 </marker>
             </defs>
             <path
@@ -219,12 +239,18 @@
     {/if}
 
     {#if phase === "revealing"}
-        {#each visibleCells as cell}
+        {#each visibleCells as cell (cell.id)}
             {@const rect = cellRects.get(cell.id)}
+            {@const isActive =
+                activeSwap &&
+                (cell.id === activeSwap.cellA_Id ||
+                    cell.id === activeSwap.cellB_Id)}
             {#if rect}
                 <div
                     class="data-card"
-                    style="left: {rect.left + rect.width / 2}px; top: {rect.top - 10}px; transform: scale({$cardScale});"
+                    class:active={isActive}
+                    style="left: {rect.right}px; top: {rect.top}px; transform: translate(-20%, -80%) scale({$cardScale *
+                        (isActive ? 1.0 : 0.75)});"
                 >
                     <div class="card-inner">
                         <span class="label">Target</span>
@@ -276,7 +302,8 @@
                         <button
                             class="gutter-tab row"
                             aria-label="Select row {r + 1}"
-                            style="left: {rect.left - 48}px; top: {rect.top + rect.height / 2}px;"
+                            style="left: {rect.left - 48}px; top: {rect.top +
+                                rect.height / 2}px;"
                             onclick={() => {
                                 window.dispatchEvent(
                                     new CustomEvent("cw-selection-made", {
@@ -299,7 +326,8 @@
                         <button
                             class="gutter-tab col"
                             aria-label="Select column {c + 1}"
-                            style="left: {rect.left + rect.width / 2}px; top: {rect.top - 48}px;"
+                            style="left: {rect.left +
+                                rect.width / 2}px; top: {rect.top - 48}px;"
                             onclick={() => {
                                 window.dispatchEvent(
                                     new CustomEvent("cw-selection-made", {
@@ -429,12 +457,29 @@
         pointer-events: none;
         z-index: 100;
         white-space: nowrap;
+        transform-origin: center bottom;
+        transition:
+            transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+            opacity 0.4s ease,
+            box-shadow 0.4s ease,
+            border-color 0.4s ease;
+        opacity: 0.3;
+    }
+
+    .data-card.active {
+        opacity: 1;
+        border-color: var(--accent-cyan);
+        box-shadow:
+            0 0 20px rgba(0, 229, 255, 0.5),
+            0 8px 16px rgba(0, 0, 0, 0.5);
+        z-index: 101;
     }
 
     .card-inner {
         display: flex;
         flex-direction: column;
         align-items: center;
+        min-width: 24px;
     }
 
     .label {
