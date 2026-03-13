@@ -1,0 +1,87 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine Version
+        id: vars
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME#v}
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Pnpm
+        run: corepack prepare pnpm@10.31.0 --activate
+
+      - name: Build Chrome (from main)
+        run: |
+          git checkout origin/main
+          pnpm install
+          pnpm run build
+          
+          # Package Dist-only
+          cd dist
+          zip -r "../crosswordle-chrome-dist-only-v${{ steps.vars.outputs.version }}.zip" .
+          cd ..
+          
+          # Package Full Bundle
+          mkdir temp_bundle
+          cp -r dist/* temp_bundle/
+          cp install.ps1 temp_bundle/
+          cd temp_bundle
+          zip -r "../crosswordle-chrome-full-bundle-v${{ steps.vars.outputs.version }}.zip" .
+          cd ..
+
+      - name: Build Firefox (from firefox)
+        run: |
+          git checkout origin/firefox
+          pnpm install
+          pnpm run build
+          
+          # Package Firefox
+          cd dist
+          zip -r "../crosswordle-plus-plus-firefox-v${{ steps.vars.outputs.version }}.zip" .
+          cp "../crosswordle-plus-plus-firefox-v${{ steps.vars.outputs.version }}.zip" "../crosswordle-plus-plus-firefox-v${{ steps.vars.outputs.version }}.xpi"
+          cd ..
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            *.zip
+            *.xpi
+          body: |
+            ## Crosswordle++ v${{ steps.vars.outputs.version }}
+
+            ### Firefox Installation
+            - Download the `.xpi` file and drag it into Firefox.
+            - Alternatively, install from [AMO](https://addons.mozilla.org/en-US/firefox/addon/crosswordle/).
+
+            ### Chrome/Chromium Installation
+            - **Full Bundle**: Includes the `install.ps1` script for automated installation.
+            - **Dist-Only**: Just the extension files for manual loading.
