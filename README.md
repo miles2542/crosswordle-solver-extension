@@ -1,8 +1,8 @@
 # Crosswordle++
 
-[![Firefox Add-on](https://img.shields.io/amo/v/crosswordle?style=flat-square&color=FF7139&label=firefox%20add-on)](https://addons.mozilla.org/en-US/firefox/addon/crosswordle/)
-[![Edge Add-on](https://img.shields.io/badge/edge-in%20review-blue?style=flat-square)](https://microsoftedge.microsoft.com/addons/Microsoft-Edge-Extensions-Home)
-[![GitHub Release](https://img.shields.io/github/v/release/miles2542/crosswordle-solver-extension?style=flat-square&color=00E5FF)](https://github.com/miles2542/crosswordle-solver-extension/releases)
+[![Firefox Add-on](https://img.shields.io/amo/v/crosswordle?style=flat-square&color=FF7139&label=Firefox%20addon)](https://addons.mozilla.org/en-US/firefox/addon/crosswordle/)
+[![Edge Add-on](https://img.shields.io/badge/Edge%20addon-v1.2.2-0078d4?style=flat-square)](https://microsoftedge.microsoft.com/addons/detail/crosswordle/fnojeeilakhpclkblblcdemhfdjcibkm)
+[![GitHub Release](https://flat.badgen.net/github/release/miles2542/crosswordle-solver-extension?color=00e5ff&label=Releases)](https://github.com/miles2542/crosswordle-solver-extension/releases)
 
 ![Crosswordle++ Showcase](./assets/showcase.png)
 
